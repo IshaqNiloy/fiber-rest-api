@@ -216,17 +216,17 @@ func DeleteProduct(c *fiber.Ctx) error {
 	}
 
 	// checks whether any row has been deleted or not
-	//if !row.Next() {
-	//	log.Printf("id does not exist")
-	//	// failed response
-	//	err = applibs.Response(c, applibs.RequestFailed, fiber.StatusBadRequest, nil)
-	//	// error while sending failed response
-	//	if err != nil {
-	//		log.Printf("sending error response failed: %v", err)
-	//		return err
-	//	}
-	//	return nil
-	//}
+	if !row.Next() {
+		log.Printf("id does not exist")
+		// failed response
+		err = applibs.Response(c, applibs.RequestFailed, fiber.StatusBadRequest, nil)
+		// error while sending failed response
+		if err != nil {
+			log.Printf("sending error response failed: %v", err)
+			return err
+		}
+		return nil
+	}
 
 	// log deleted product
 	log.Print("product deleted successfully")
