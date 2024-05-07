@@ -197,11 +197,54 @@ func CreateProduct(c *fiber.Ctx) error {
 
 func DeleteProduct(c *fiber.Ctx) error {
 	id := c.Params("id")
-	product := model.Product{}
-	products := model.Products{}
 
-	// gets specific row from db
-	row, err := database.DB.Query("DELETE FROM products WHERE id = $1", id)
+	// gets specific row
+	row, err := database.DB.Query("SELECT * FROM products where id=$1", id)
+
+	// error while getting specific row
+	if err != nil {
+		log.Printf("getting row failed: %v", err)
+		err = applibs.Response(c, applibs.RequestFailed, fiber.StatusBadRequest, nil)
+		if err != nil {
+			log.Printf("sending failed response failed: %v", err)
+			return err
+		}
+		return nil
+	}
+
+	product := model.Product{}
+	result := model.Products{}
+
+	for row.Next() {
+		// scans values of the specific row
+		err = row.Scan(&product.Id, &product.Amount, &product.Name, &product.Description, &product.Category)
+
+		// error while scanning row
+		if err != nil {
+			log.Printf("scanning row failed: %v", err)
+			err = applibs.Response(c, applibs.RequestFailed, fiber.StatusBadRequest, nil)
+			if err != nil {
+				log.Printf("sending failed response failed: %v", err)
+				return err
+			}
+			return nil
+		}
+		result.Products = append(result.Products, product)
+	}
+
+	// no data found
+	if len(result.Products) < 1 {
+		log.Printf("no data found")
+		err = applibs.Response(c, applibs.RequestFailed, fiber.StatusBadRequest, nil)
+		if err != nil {
+			log.Printf("sending failed response failed: %v", err)
+			return err
+		}
+		return nil
+	}
+
+	// deletes specific row from db
+	row, err = database.DB.Query("DELETE FROM products WHERE id = $1", id)
 
 	// error while sending success response
 	if err != nil {
@@ -215,57 +258,10 @@ func DeleteProduct(c *fiber.Ctx) error {
 		return nil
 	}
 
-	// checks whether any row has been deleted or not
-	if !row.Next() {
-		log.Printf("id does not exist")
-		// failed response
-		err = applibs.Response(c, applibs.RequestFailed, fiber.StatusBadRequest, nil)
-		// error while sending failed response
-		if err != nil {
-			log.Printf("sending error response failed: %v", err)
-			return err
-		}
-		return nil
-	}
-
-	// log deleted product
 	log.Print("product deleted successfully")
 
-	// scanning row
-	for row.Next() {
-		err = row.Scan(&product.Amount, &product.Name, &product.Description, &product.Category)
-	}
-
-	// error while scanning row
-	if err != nil {
-		log.Printf("scanning row error: %v", err)
-		// failed response
-		err = applibs.Response(c, applibs.RequestFailed, fiber.StatusBadRequest, nil)
-		// error while sending error response
-		if err != nil {
-			log.Printf("sending error response failed: %v", err)
-			return err
-		}
-		return nil
-	}
-
-	products.Products = append(products.Products, product)
-
-	// error while getting specific row
-	if err != nil {
-		log.Printf("getting specific row error: %v", err)
-		// failed response
-		err = applibs.Response(c, applibs.RequestFailed, fiber.StatusBadRequest, nil)
-		// error while sending error response
-		if err != nil {
-			log.Printf("sending error response failed: %v", err)
-			return err
-		}
-		return nil
-	}
-
 	// success response
-	err = applibs.Response(c, applibs.RequestSuccess, fiber.StatusOK, &products)
+	err = applibs.Response(c, applibs.RequestSuccess, fiber.StatusOK, &result)
 
 	// error while sending success response
 	if err != nil {
